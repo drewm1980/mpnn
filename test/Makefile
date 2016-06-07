@@ -10,7 +10,7 @@
 
 OS = Linux
 
-C++ = g++32
+C++ = g++
 
 C++FLAGS = -g -Wall
 LDFLAGS = 

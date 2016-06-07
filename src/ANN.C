@@ -100,7 +100,7 @@ ANNdist annDist(			// interpoint squared distance
 void annPrintPt(			// print a point
     ANNpoint		pt,		// the point
     int			dim,		// the dimension
-    ostream		&out)		// output stream
+    std::ostream		&out)		// output stream
 {
     for (int j = 0; j < dim; j++) {
        	out << pt[j];
@@ -200,11 +200,11 @@ ANNbool ANNorthRect::inside(int dim, ANNpoint p)
 void annError(char *msg, ANNerr level)
 {
     if (level == ANNabort) {
-	cerr << "ANN: ERROR------->" << msg << "<-------------ERROR\n";
+      std::cerr << "ANN: ERROR------->" << msg << "<-------------ERROR\n";
     	exit(1);
     }
     else {
-	cerr << "ANN: WARNING----->" << msg << "<-------------WARNING\n";
+      std::cerr << "ANN: WARNING----->" << msg << "<-------------WARNING\n";
     }
 }
 

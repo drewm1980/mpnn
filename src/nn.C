@@ -48,7 +48,7 @@ ANN::ANN(ANNpointArray points, int n1, int n2, int size, int dim, int *topology,
 
   anncount++;
   if (anncount == 1)
-    cout << "MPNN library" << endl;
+    std::cout << "MPNN library" << std::endl;
 
   numPoints = size;
   dimension = dim;

@@ -94,9 +94,9 @@
 //----------------------------------------------------------------------
 //  basic includes
 //----------------------------------------------------------------------
-#include <stdlib.h>			// standard libs
-#include <stdio.h>			// standard I/O (for NULL)
-#include <iostream.h>			// I/O streams
+#include <cstdlib>			// standard libs
+#include <cstdio>			// standard I/O (for NULL)
+#include <iostream>			// I/O streams
 #include <math.h>			// math includes
 #include <values.h>			// special values
 

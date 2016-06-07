@@ -70,7 +70,7 @@ MultiANN::MultiANN(					// constructor
   topology = new int[dimension]; 			// allocate topology array
   scaling = annAllocPt(dimension); 			// allocate scaling array
   points_coor = annAllocPts(MAXPOINTS, dimension);     	// allocate coordinates of the data points
-  points_ptr = new (void *)[MAXPOINTS]; 	       	// allocate pointers to the data points
+  points_ptr = new void *[MAXPOINTS]; // allocate pointers to the data points
 
   for (int i = 0; i < dimension; i++) {
    topology[i] = tt[i];
@@ -218,10 +218,9 @@ void *MultiANN::NearestNeighbor(  				// 1-nearest neighbor query
 				   double &best_dist) 		// distance from the nearest neighbor to x (returned)
 {
   int n,n_last;
-  int k,num;
+  int k;
   double d,d_min;
 
-  num = size;
   n = n_last = 0; 						// Keeps the warnings away
   d_min = INFINITY; d = 0.0;
 
@@ -277,7 +276,7 @@ void MultiANN::NearestNeighbor(const ANNpoint &x,      	// query point
 			       int *&best_idx, 		// indices of the nearest neighbors to x (returned)
 			       void **&best_ptr)       	// pointers to the nearest neighbors to x (returned)
 {
-  int n_best, n, n_last, j, k, l, m, num;
+  int n, n_last, j, k, l, m;
   double d;
 
   int *node_list = new int[NumNeighbors];
@@ -294,8 +293,7 @@ void MultiANN::NearestNeighbor(const ANNpoint &x,      	// query point
     help_list[i] = 0;
   }
 
-  num = size;
-  n_best = n_last = n = 0; // Keeps the warnings away
+  n_last = n = 0; // Keeps the warnings away
 
 
   // Find the nearest neighbor
