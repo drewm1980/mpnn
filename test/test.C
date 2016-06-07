@@ -1,9 +1,9 @@
-#include <stdlib.h>
-#include <stdio.h>			// C I/O
-#include <stdint.h>
-#include <fstream.h>			// file I/O
-#include <iostream.h>			// file I/O
-#include <string.h>			// string manipulation
+#include <cstdlib>
+#include <cstdio>			// C I/O
+#include <cstdint>
+#include <fstream>			// file I/O
+#include <iostream>			// file I/O
+#include <string>			// string manipulation
 #include <math.h>			// math routines
 #include <list>
 #include <queue>
