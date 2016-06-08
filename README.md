@@ -1,4 +1,4 @@
-Nearest Neighbor Library for Motion Planning
+# Nearest Neighbor Library for Motion Planning
 
 University of Illinois
 
