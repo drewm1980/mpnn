@@ -11,6 +11,6 @@ if(NOT CMAKE_BUILD_TYPE)
 		FORCE)
 endif(NOT CMAKE_BUILD_TYPE)
 
-add_library(DNN src/ANN.C src/kd_tree.C src/kd_util.C src/kd_split.C src/kd_search.C src/nn.C src/multiann.C)
+add_library(DNN src/ANN.cpp src/kd_tree.cpp src/kd_util.cpp src/kd_split.cpp src/kd_search.cpp src/nn.cpp src/multiann.cpp)
 
 add_subdirectory(test)
