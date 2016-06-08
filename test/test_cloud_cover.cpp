@@ -22,19 +22,19 @@ using namespace std;
 #endif
 
 // dim: dimension of the embedding of the product space, i.e. 5 for S1 x RP3
-// tt: individual topologies in the cross product: 
+// topologies: individual topologies in the cross product: 
 // 2 for -PI to PI
-// 3 for quaternion
+// 3 for quaternion. MUST APPEAR 4 times consecutively!
 // 1 for -100 to 100
 // p: the point in the product space
 //
 // Doesn't do any memory allocation; p must be large enough!
-void randomDistPoint(int dim, const int *tt, ANNpoint &p) {
+void randomDistPoint(int dim, const int *topologies, ANNpoint &p) {
     for (int kk = 0; kk < dim; kk++) {
         double tmp = rand() / (2.14783e+09);
-        if (tt[kk] == 2) {
+        if (topologies[kk] == 2) {
             p[kk] = (2 * PI * tmp - PI);  // region -PI PI
-        } else if (tt[kk] == 3) {
+        } else if (topologies[kk] == 3) {
             double tmp1 = rand() / (2.14783e+09);
             double tmp2 = rand() / (2.14783e+09);
 
@@ -96,7 +96,7 @@ double Metric(const ANNpoint x1, const ANNpoint x2, int dim, int *topology,
                 fd = fd / (sqrt(norm1 * norm2));
             }
             dtheta = ANN_MIN(acos(fd), acos(-fd)); // Quaterion angle in radians
-            rho += ANN_POW(scale[i] * dtheta); // squared scaled angle
+            rho += ANN_POW(scale[i] * dtheta); // squared scaled angle in radians
             i = i + 3;
         }
     }
@@ -132,150 +132,82 @@ void printPt(ostream &out, ANNpoint p, int dim)  // print point
     out << ")\n";
 }
 
+struct Quaternion
+{
+  double p[4];
+};
+vector<Quaternion> load_quaternion_cloud(const string filename)
+{
+    ifstream stream(filename); 
+    vector<Quaternion> cloud;
+    Quaternion q;
+    int lines_loaded = 0;
+    while (!stream.eof()) {
+        for (int i = 0; i < 4; i++) stream >> q.p[i];
+        cloud.push_back(q);
+        lines_loaded += 1;
+    }
+    cloud.pop_back();
+    cout << "Loaded " << cloud.size() << " points!" << endl;
+    return cloud;
+}
+
 int main(int argc, char **argv) {
+    string filename;
+    switch (argc) {
+        case 1:
+            cout << "Loading the quaternion file from disk..." << endl;
+            filename = string("simple_0.qua");
+            break;
+        case 2:
+            filename = string(argv[1]);
+            break;
+        default:
+            cout << "Wrong number of arguments!" << endl;
+            exit(EXIT_FAILURE);
+    }
+    auto cloud = load_quaternion_cloud(filename);
+
+    int max_points = cloud.size();      // maximum number of data points
+    int dimension = 4;            
+    ANNpoint first_point = &(cloud[0].p[0]); 
+    vector<double*> pointers_to_points;
+    // ANN requires an entire vector of pointers even if the array is dense!
+    for (int i = 0; i < max_points; i++) {
+        pointers_to_points.push_back(first_point + 4*i);
+    }
+    ANNpointArray data_points = &pointers_to_points[0]; 
+
+    cout << "Creating the search data structure..." << endl;
+    int topology[] = {3, 3, 3, 3}; // Code for a single quaternion
+    double _scale = 1.0;
+    double scale[] = {_scale, _scale, _scale, _scale};
     int MaxNeighbors = 16;  // number of nearest neighbors
-    int dim = 2;            // dimension
-    int m_pts = 20000;      // maximum number of data points
-    int numIt = 100;        // maximum number of nearest neighbor calls
+    MultiANN MAG(dimension, MaxNeighbors, topology, scale);
+    for (int j = 0; j < max_points; j++) {
+      MAG.AddPoint(data_points[j], data_points[j]);  
+    }
 
-    istream *dim_in = NULL;       // input for dimension
-    istream *topology_in = NULL;  // input for topology
-
-    double d_ann, d_brute;
-    int idx_ann, idx_brute;
-
-    static ifstream dimStream;       // dimension file stream
-    static ifstream topologyStream;  // topology file stream
-
-    ANNpointArray data_pts;  // data points
-    ANNpoint query_pt;       // query point
-    int *topology;           // topology of the space
-    ANNpoint scale;          // scaling of the coordinates
+    cout << "Generating Random Query Point" << endl;
     ANNpoint result_pt;      // scaling of the coordinates
-    MultiANN *MAG;           // search structure
+    ANNpoint query_pt = annAllocPt(dimension);          // allocate query point
+    //randomDistPoint(dimension, topology, query_pt);
+    query_pt[0] = 0.0;
+    query_pt[1] = 0.0;
+    query_pt[2] = 0.0;
+    query_pt[3] = 1.0;
 
-    srand(time(NULL));
-    dimStream.open("dim", ios::in);  // open query file
-    if (!topologyStream) {
-        cerr << "Cannot open dim file\n";
-        exit(1);
-    }
-    dim_in = &dimStream;  // make this query stream
-    (*dim_in) >> dim;     // read dimension
+    cout << "Calling nearest neighbor..." << endl;
+    double d_ann = INFINITY;
+    int idx_ann;
+    result_pt = (ANNpoint)MAG.NearestNeighbor(query_pt, idx_ann, d_ann);
+    printPt(cout << "query_pt = ", query_pt, dimension);
+    printPt(cout << "result_pt = ", result_pt, dimension);
 
-    query_pt = annAllocPt(dim);          // allocate query point
-    data_pts = annAllocPts(m_pts, dim);  // allocate data points
-    topology = new int[dim];             // allocate topology array
-    scale = new double[dim];             // allocate scaling array
+    cout << "ANN distance = " << d_ann << " rad" << endl;
 
-    topologyStream.open("topology", ios::in);  // open query file
-    if (!topologyStream) {
-        cerr << "Cannot open topology file\n";
-        exit(1);
-    }
-    topology_in = &topologyStream;   // make this query stream
-    readPt(*topology_in, topology, dim);  // read topology
+    double d_degrees = d_ann*180.0/PI;
+    cout << "ANN distance = " << d_degrees << " degrees" << endl;
 
-    for (int i = 0; i < dim; i++) {
-        if (topology[i] == 1)
-            scale[i] = 1.0;
-        else if (topology[i] == 2)
-            scale[i] = 50 / PI;
-        else if (topology[i] == 3)
-            scale[i] = 50.0;
-    }
-    cout << "Topology and Scale: \n";  // print topology
-    for (int i = 0; i < dim; i++) {
-        cout << " topology[" << i << "] = " << topology[i] << "\t";
-        cout << " scale[" << i << "] = " << scale[i] << endl;
-    }
-    cout << "\n";
-
-    randomDist(dim, topology, data_pts, m_pts);       // generate random points
-    randomDistPoint(dim, topology, query_pt);  // generate query point
-
-    cout << "MaxNeighbors=" << MaxNeighbors << "\t";
-    cout << "m_pts=" << m_pts << "\t";
-    cout << "dim=" << dim << "\t";
-    cout << "numIt=" << numIt << "\n";
-
-    for (int ii = 0; ii < 1000; ii++) {
-        cout << "\n\t test " << ii << ":" << endl;
-
-        randomDist(dim, topology, data_pts, m_pts);       // generate random points
-        randomDistPoint(dim, topology, query_pt);  // generate query point
-
-        //***********************Construction phase**********************/
-
-        clock_t tv1, tv2;
-        double time;
-        tv1 = clock();
-
-        MAG = new MultiANN(dim, MaxNeighbors, topology,
-                           scale);  // create a data structure
-        for (int j = 0; j < m_pts; j++) {
-            MAG->AddPoint(data_pts[j], data_pts[j]);  // add new data point
-        }
-
-        // ANN *a = new ANN(data_pts, 0, m_pts-1, m_pts, dim, topology, scale,
-        // 1);
-
-        tv2 = clock();
-        time = (tv2 - tv1) / (CLOCKS_PER_SEC / (double)1000.0);
-        cout << "Construction MPNN time:" << time / 100 << "sec\n";
-        tv1 = clock();
-
-        //*************************Query phase*******************************/
-
-        double d;
-        for (int j = 0; j < numIt; j++) {
-            // randomDistPoint(dim, topology, query_pt);				// generate query
-            // point
-            d_ann = INFINITY;
-            result_pt = (ANNpoint)MAG->NearestNeighbor(
-                query_pt, idx_ann,
-                d_ann);  // compute nearest neighbor using library
-            // idx_ann = a->NearestNeighbor(topology, scale, query_pt, d_ann);
-            // // compute nearest neighbor using library
-        }
-
-        tv2 = clock();
-        time = (tv2 - tv1) / (CLOCKS_PER_SEC / (double)1000.0);
-        cout << "MPNN query time:" << time / 100 << "sec\n\n";
-        tv1 = clock();
-
-        for (int j = 0; j < numIt; j++) {
-            // randomDistPoint(dim, topology, query_pt);				// generate query
-            // point
-            d_brute = INFINITY;  // compare the obtained result with the brute
-                                 // force result
-            for (int i = 0; i < m_pts; i++) {
-                d = Metric(query_pt, data_pts[i], dim, topology, scale);
-                if (d_brute > d) {
-                    d_brute = d;
-                    idx_brute = i;
-                }
-            }
-        }
-
-        tv2 = clock();
-        time = (tv2 - tv1) / (CLOCKS_PER_SEC / (double)1000.0);
-        cout << "brute force time:" << time / 100 << "sec\n\n";
-        tv1 = clock();
-
-
-        if (MAG) {
-            MAG->ResetMultiANN();
-            MAG = NULL;
-        }
-
-        cout << "ANN distance = " << d_ann << endl;
-        cout << "nearest neighbor";
-        printPt(cout, result_pt, dim);
-
-        cout << "Brute distance = " << d_brute << endl;
-        cout << "nearest neighbor";
-        printPt(cout, data_pts[idx_brute], dim);
-    }
 }
 
