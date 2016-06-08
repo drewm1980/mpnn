@@ -67,7 +67,7 @@
 // provided "as is" without express or implied warranty.
 //----------------------------------------------------------------------
 
-#include "DNN/kd_util.h"  // kd-utility declarations
+#include "kd_util.h"  // kd-utility declarations
 //#include <ANN/ANNperf.h>		// performance evaluation
 
 //----------------------------------------------------------------------

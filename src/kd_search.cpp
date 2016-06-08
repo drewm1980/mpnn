@@ -63,7 +63,7 @@
 // provided "as is" without express or implied warranty.
 //----------------------------------------------------------------------
 
-#include "DNN/kd_search.h"  // kd-search declarations
+#include "kd_search.h"  // kd-search declarations
 
 //----------------------------------------------------------------------
 //  Approximate nearest neighbor searching by kd-tree search

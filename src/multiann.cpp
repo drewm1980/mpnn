@@ -39,8 +39,8 @@
 //
 //-------------------------------------------------------------------------
 
-#include "DNN/ANN.h"  // ANN declarations
-#include "DNN/multiann.h"
+#include "ANN.h"  // ANN declarations
+#include "multiann.h"
 
 #ifndef INFINITY
 #define INFINITY 1.0e40

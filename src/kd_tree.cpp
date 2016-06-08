@@ -63,9 +63,9 @@
 // provided "as is" without express or implied warranty.
 //----------------------------------------------------------------------
 
-#include "DNN/kd_tree.h"   // kd-tree declarations
-#include "DNN/kd_split.h"  // kd-tree splitting rules
-#include "DNN/kd_util.h"   // kd-tree utilities
+#include "kd_tree.h"   // kd-tree declarations
+#include "kd_split.h"  // kd-tree splitting rules
+#include "kd_util.h"   // kd-tree utilities
 
 //----------------------------------------------------------------------
 //  Global data

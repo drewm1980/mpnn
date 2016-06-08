@@ -63,9 +63,9 @@
 // provided "as is" without express or implied warranty.
 //----------------------------------------------------------------------
 
-#include "DNN/kd_tree.h"   // kd-tree definitions
-#include "DNN/kd_util.h"   // kd-tree utilities
-#include "DNN/kd_split.h"  // splitting functions
+#include "kd_tree.h"   // kd-tree definitions
+#include "kd_util.h"   // kd-tree utilities
+#include "kd_split.h"  // splitting functions
 
 //----------------------------------------------------------------------
 //  Constants

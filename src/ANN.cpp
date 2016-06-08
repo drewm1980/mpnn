@@ -63,7 +63,7 @@
 // provided "as is" without express or implied warranty.
 //----------------------------------------------------------------------
 
-#include "DNN/ANNx.h"  // all ANN includes
+#include "ANNx.h"  // all ANN includes
 
 //----------------------------------------------------------------------
 //  Point methods
