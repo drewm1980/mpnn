@@ -222,7 +222,7 @@ int main(int argc, char **argv) {
 
         tv2 = clock();
         time = (tv2 - tv1) / (CLOCKS_PER_SEC / (double)1000.0);
-        cout << "Construction MPNN time:" << time / 100 << "sec\n";
+        cout << "Construction MPNN time:" << time / numIt << "sec\n";
         tv1 = clock();
 
         //*************************Query phase*******************************/
@@ -241,7 +241,7 @@ int main(int argc, char **argv) {
 
         tv2 = clock();
         time = (tv2 - tv1) / (CLOCKS_PER_SEC / (double)1000.0);
-        cout << "MPNN query time:" << time / 100 << "sec\n\n";
+        cout << "MPNN query time:" << time / numIt << "sec\n\n";
         tv1 = clock();
 
         for (int j = 0; j < numIt; j++) {
@@ -260,7 +260,7 @@ int main(int argc, char **argv) {
 
         tv2 = clock();
         time = (tv2 - tv1) / (CLOCKS_PER_SEC / (double)1000.0);
-        cout << "brute force time:" << time / 100 << "sec\n\n";
+        cout << "brute force time:" << time / numIt << "sec\n\n";
         tv1 = clock();
 
 
