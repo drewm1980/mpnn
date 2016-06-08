@@ -189,7 +189,6 @@ int main(int argc, char **argv) {
     }
 
     cout << "Generating Random Query Point" << endl;
-    ANNpoint result_pt;      // scaling of the coordinates
     ANNpoint query_pt = annAllocPt(dimension);          // allocate query point
     //randomDistPoint(dimension, topology, query_pt);
     query_pt[0] = 0.0;
@@ -197,17 +196,44 @@ int main(int argc, char **argv) {
     query_pt[2] = 0.0;
     query_pt[3] = 1.0;
 
-    cout << "Calling nearest neighbor..." << endl;
-    double d_ann = INFINITY;
-    int idx_ann;
-    result_pt = (ANNpoint)MAG.NearestNeighbor(query_pt, idx_ann, d_ann);
-    printPt(cout << "query_pt = ", query_pt, dimension);
-    printPt(cout << "result_pt = ", result_pt, dimension);
+    {
+        cout << "Calling single point nearest neighbor..." << endl;
+        double d_ann = INFINITY;
+        int idx_ann;
+        auto result_pt = (ANNpoint)MAG.NearestNeighbor(
+            query_pt, idx_ann, d_ann);  // single nearest neighbor
+        printPt(cout << "query_pt = ", query_pt, dimension);
+        printPt(cout << "result_pt = ", result_pt, dimension);
+        cout << "ANN distance = " << d_ann << " rad" << endl;
+        double d_degrees = d_ann * 180.0 / PI;
+        cout << "ANN distance = " << d_degrees << " degrees" << endl;
+    }
+    {
+        cout << "Calling multiple point nearest neighbor..." << endl;
+        double d_ann = INFINITY;
 
-    cout << "ANN distance = " << d_ann << " rad" << endl;
+        double best_dist[MaxNeighbors];
+        ANNpoint p_best_dist[MaxNeighbors];
+        for(int i=0; i<MaxNeighbors; i++) p_best_dist[i] = best_dist+i;
 
-    double d_degrees = d_ann*180.0/PI;
-    cout << "ANN distance = " << d_degrees << " degrees" << endl;
+        int best_neighbor_indeces[MaxNeighbors];
+        int* p_best_neighbor_indeces[MaxNeighbors];
+        for(int i=0; i<MaxNeighbors; i++) p_best_neighbor_indeces[i] = best_neighbor_indeces+i;
+        void *best_ptr[MaxNeighbors];
+        void **p_best_ptr[MaxNeighbors];
+        for(int i=0; i<MaxNeighbors; i++) p_best_ptr[i] = best_ptr+i;
+        MAG.NearestNeighbor(query_pt, p_best_dist[0], p_best_neighbor_indeces[0],
+                            p_best_ptr[0]);  // multiple nearest neighbor
 
+        cout << "Nearest Neighbors:" << endl;
+        for(int i=0; i<MaxNeighbors; i++)
+        {
+          int best_neighbor_index = best_neighbor_indeces[i];
+          //cout << "best_neighbor_index = " << best_neighbor_index << endl;
+          cout << best_dist[i]*180.0/PI << " deg: ";
+          printPt(cout, pointers_to_points[best_neighbor_index], dimension);
+        }
+
+    }
 }
 
