@@ -12,25 +12,24 @@
 #include <ANN.h>  // ANN declarations
 #include <multiann.h>
 
+using namespace std;
+
 #ifndef INFINITY
 #define INFINITY 1.0e40
 #endif
-
 #ifndef PI
 #define PI 3.1415926535897932385
 #endif
 
-using namespace std;
-
-int MaxNeighbors = 16;  // number of nearest neighbors
-int dim = 2;            // dimension
-int m_pts = 20000;      // maximum number of data points
-int numIt = 100;        // maximum number of nearest neighbor calls
-
-istream *dim_in = NULL;       // input for dimension
-istream *topology_in = NULL;  // input for topology
-
-void randomDistPoint(int dim, int *tt, ANNpoint &p) {
+// dim: dimension of the embedding of the product space, i.e. 5 for S1 x RP3
+// tt: individual topologies in the cross product: 
+// 2 for -PI to PI
+// 3 for quaternion
+// 1 for -100 to 100
+// p: the point in the product space
+//
+// Doesn't do any memory allocation; p must be large enough!
+void randomDistPoint(int dim, const int *tt, ANNpoint &p) {
     for (int kk = 0; kk < dim; kk++) {
         double tmp = rand() / (2.14783e+09);
         if (tt[kk] == 2) {
@@ -49,13 +48,16 @@ void randomDistPoint(int dim, int *tt, ANNpoint &p) {
             p[kk + 2] = sin(Theta2) * r2;
             p[kk + 3] = cos(Theta2) * r2;
 
+            // Modifies loop index!
             kk = kk + 3;  // random quaternions
         } else
             p[kk] = 200 * tmp - 100;  // region -100 to 100
     }
 }
 
-void randomDist(int dim, int *tt, ANNpointArray &data_pts) {
+// Generate an array of random points.
+// Does no allocation; data_pts must be large enough!
+void randomDist(int dim, const int *tt, ANNpointArray &data_pts, int m_pts) {
     int n_pts = 0;
     while (n_pts < m_pts) {
         randomDistPoint(dim, tt, data_pts[n_pts]);
@@ -63,8 +65,13 @@ void randomDist(int dim, int *tt, ANNpointArray &data_pts) {
     }
 }
 
-// Default is to use the standard Euclidean metric
-double Metric(ANNpoint x1, ANNpoint x2, int dim, int *topology,
+// Compute the distance metric between two points.
+// Default is to use the standard Euclidean metric (defined by #defines in
+// ANN.h)
+// x1,x2: the two points in the space
+// dim: the dimension of the embedding of the product space.
+// topology: array of codes for the individual topologies
+double Metric(const ANNpoint x1, const ANNpoint x2, int dim, int *topology,
               ANNpoint scale) {
     double rho = 0, fd, dtheta;
 
@@ -76,8 +83,11 @@ double Metric(ANNpoint x1, ANNpoint x2, int dim, int *topology,
             dtheta = ANN_MIN(fd, 2.0 * PI - fd);
             rho += ANN_POW(scale[i] * dtheta);
         } else if (topology[i] == 3) {
+            // dot product
             fd = x1[i] * x2[i] + x1[i + 1] * x2[i + 1] + x1[i + 2] * x2[i + 2] +
                  x1[i + 3] * x2[i + 3];
+            // Handle non-unit quaternions only if they're larger than 1 (why?)
+            // should this be >0 to avoid divide by zero?
             if (fd > 1) {
                 double norm1 = x1[i] * x1[i] + x1[i + 1] * x1[i + 1] +
                                x1[i + 2] * x1[i + 2] + x1[i + 3] * x1[i + 3];
@@ -85,8 +95,8 @@ double Metric(ANNpoint x1, ANNpoint x2, int dim, int *topology,
                                x2[i + 2] * x2[i + 2] + x2[i + 3] * x2[i + 3];
                 fd = fd / (sqrt(norm1 * norm2));
             }
-            dtheta = ANN_MIN(acos(fd), acos(-fd));
-            rho += ANN_POW(scale[i] * dtheta);
+            dtheta = ANN_MIN(acos(fd), acos(-fd)); // Quaterion angle in radians
+            rho += ANN_POW(scale[i] * dtheta); // squared scaled angle
             i = i + 3;
         }
     }
@@ -95,7 +105,12 @@ double Metric(ANNpoint x1, ANNpoint x2, int dim, int *topology,
     return sqrt(rho);
 }
 
-ANNbool readPt(istream &in, int *p)  // read point (false on EOF)
+// read a point from a file stream 
+// in: input file stream
+// p: the point
+// dim: the dimension of the product space
+// returns false on EOF
+ANNbool readPt(istream &in, int *p, int dim)  
 {
     for (int i = 0; i < dim; i++) {
         if (!(in >> p[i])) return ANNfalse;
@@ -103,7 +118,12 @@ ANNbool readPt(istream &in, int *p)  // read point (false on EOF)
     return ANNtrue;
 }
 
-void printPt(ostream &out, ANNpoint p)  // print point
+// read a point from a file stream 
+// in: input file stream
+// p: the point
+// dim: the dimension of the product space
+// returns false on EOF
+void printPt(ostream &out, ANNpoint p, int dim)  // print point
 {
     out << "(" << p[0];
     for (int i = 1; i < dim; i++) {
@@ -113,6 +133,14 @@ void printPt(ostream &out, ANNpoint p)  // print point
 }
 
 int main(int argc, char **argv) {
+    int MaxNeighbors = 16;  // number of nearest neighbors
+    int dim = 2;            // dimension
+    int m_pts = 20000;      // maximum number of data points
+    int numIt = 100;        // maximum number of nearest neighbor calls
+
+    istream *dim_in = NULL;       // input for dimension
+    istream *topology_in = NULL;  // input for topology
+
     double d_ann, d_brute;
     int idx_ann, idx_brute;
 
@@ -146,7 +174,7 @@ int main(int argc, char **argv) {
         exit(1);
     }
     topology_in = &topologyStream;   // make this query stream
-    readPt(*topology_in, topology);  // read topology
+    readPt(*topology_in, topology, dim);  // read topology
 
     for (int i = 0; i < dim; i++) {
         if (topology[i] == 1)
@@ -163,7 +191,7 @@ int main(int argc, char **argv) {
     }
     cout << "\n";
 
-    randomDist(dim, topology, data_pts);       // generate random points
+    randomDist(dim, topology, data_pts, m_pts);       // generate random points
     randomDistPoint(dim, topology, query_pt);  // generate query point
 
     cout << "MaxNeighbors=" << MaxNeighbors << "\t";
@@ -174,7 +202,7 @@ int main(int argc, char **argv) {
     for (int ii = 0; ii < 1000; ii++) {
         cout << "\n\t test " << ii << ":" << endl;
 
-        randomDist(dim, topology, data_pts);       // generate random points
+        randomDist(dim, topology, data_pts, m_pts);       // generate random points
         randomDistPoint(dim, topology, query_pt);  // generate query point
 
         //***********************Construction phase**********************/
@@ -235,85 +263,19 @@ int main(int argc, char **argv) {
         cout << "brute force time:" << time / 100 << "sec\n\n";
         tv1 = clock();
 
-        //*************************k-Query phase*******************************/
-        /* int MaxNeighbors = 16;
-        double **n_best_list = new (double *)[MaxNeighbors];
-        double *d_best_list = new double[MaxNeighbors];
-        int *idx_best_list = new int[MaxNeighbors];
-        list<double*> best_list;
-        list<double*>::iterator ni;
-
-         for (int j = 0; j < numIt; j++) {
-          //randomDistPoint(dim, topology, query_pt);				//
-        generate query point
-          d_ann = INFINITY;
-          MAG->NearestNeighbor(query_pt, d_best_list, idx_best_list, (void
-        **)n_best_list);	// compute nearest neighbor using library
-        }
-
-
-        tv2 = clock();
-        time = (tv2 - tv1)/(CLOCKS_PER_SEC / (double) 1000.0);
-        cout << "MPNN query time:"<< time/100 << "sec\n\n";
-        tv1 = clock();
-
-        for (int j = 0; j < numIt; j++) {
-          // randomDistPoint(dim, topology, query_pt);				//
-        generate query point
-          d_brute = INFINITY;							//
-        compare the obtained result with the brute force result
-          best_list.clear();
-          int k = 0;
-          for (int i = 0; i < m_pts; i++) {
-            d = Metric(query_pt, data_pts[i], dim, topology, scale);
-            if ((d < 30) && (k < MaxNeighbors)) {
-              best_list.push_back(data_pts[i]);
-              d_brute = d;
-              idx_brute = i;
-              k++;
-            }
-          }
-        }
-
-        tv2 = clock();
-        time = (tv2 - tv1)/(CLOCKS_PER_SEC / (double) 1000.0);
-        cout << "brute force time:"<< time/100 << "sec\n\n";
-
-
-        cout << "ANN distance = " << d_ann << endl;
-        cout << "nearest neighbor";
-        for (int i = 0; i < MaxNeighbors; i++) {
-          if (d_best_list[i] < 30)
-            printPt(cout, (double *)n_best_list[i]);
-        }
-
-        cout << "Brute distance = " << d_brute << endl;
-        cout << "nearest neighbor";
-        for (ni = best_list.begin(); ni != best_list.end(); ni++)
-          printPt(cout, (*ni));
-
-
-        */
 
         if (MAG) {
             MAG->ResetMultiANN();
             MAG = NULL;
         }
 
-        /************report problems if
-         * any*************************************/
-
-        if (idx_ann !=
-            idx_brute)  // report error if different nearest neighbors
-            cout << "PROBLEM!!!!!!!";
-
         cout << "ANN distance = " << d_ann << endl;
         cout << "nearest neighbor";
-        printPt(cout, result_pt);
+        printPt(cout, result_pt, dim);
 
         cout << "Brute distance = " << d_brute << endl;
         cout << "nearest neighbor";
-        printPt(cout, data_pts[idx_brute]);
+        printPt(cout, data_pts[idx_brute], dim);
     }
 }
 

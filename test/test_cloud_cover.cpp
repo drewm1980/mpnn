@@ -21,7 +21,15 @@ using namespace std;
 #define PI 3.1415926535897932385
 #endif
 
-void randomDistPoint(int dim, int *tt, ANNpoint &p) {
+// dim: dimension of the embedding of the product space, i.e. 5 for S1 x RP3
+// tt: individual topologies in the cross product: 
+// 2 for -PI to PI
+// 3 for quaternion
+// 1 for -100 to 100
+// p: the point in the product space
+//
+// Doesn't do any memory allocation; p must be large enough!
+void randomDistPoint(int dim, const int *tt, ANNpoint &p) {
     for (int kk = 0; kk < dim; kk++) {
         double tmp = rand() / (2.14783e+09);
         if (tt[kk] == 2) {
@@ -40,13 +48,16 @@ void randomDistPoint(int dim, int *tt, ANNpoint &p) {
             p[kk + 2] = sin(Theta2) * r2;
             p[kk + 3] = cos(Theta2) * r2;
 
+            // Modifies loop index!
             kk = kk + 3;  // random quaternions
         } else
             p[kk] = 200 * tmp - 100;  // region -100 to 100
     }
 }
 
-void randomDist(int dim, int *tt, ANNpointArray &data_pts, int m_pts) {
+// Generate an array of random points.
+// Does no allocation; data_pts must be large enough!
+void randomDist(int dim, const int *tt, ANNpointArray &data_pts, int m_pts) {
     int n_pts = 0;
     while (n_pts < m_pts) {
         randomDistPoint(dim, tt, data_pts[n_pts]);
@@ -54,8 +65,13 @@ void randomDist(int dim, int *tt, ANNpointArray &data_pts, int m_pts) {
     }
 }
 
-// Default is to use the standard Euclidean metric
-double Metric(ANNpoint x1, ANNpoint x2, int dim, int *topology,
+// Compute the distance metric between two points.
+// Default is to use the standard Euclidean metric (defined by #defines in
+// ANN.h)
+// x1,x2: the two points in the space
+// dim: the dimension of the embedding of the product space.
+// topology: array of codes for the individual topologies
+double Metric(const ANNpoint x1, const ANNpoint x2, int dim, int *topology,
               ANNpoint scale) {
     double rho = 0, fd, dtheta;
 
@@ -67,8 +83,11 @@ double Metric(ANNpoint x1, ANNpoint x2, int dim, int *topology,
             dtheta = ANN_MIN(fd, 2.0 * PI - fd);
             rho += ANN_POW(scale[i] * dtheta);
         } else if (topology[i] == 3) {
+            // dot product
             fd = x1[i] * x2[i] + x1[i + 1] * x2[i + 1] + x1[i + 2] * x2[i + 2] +
                  x1[i + 3] * x2[i + 3];
+            // Handle non-unit quaternions only if they're larger than 1 (why?)
+            // should this be >0 to avoid divide by zero?
             if (fd > 1) {
                 double norm1 = x1[i] * x1[i] + x1[i + 1] * x1[i + 1] +
                                x1[i + 2] * x1[i + 2] + x1[i + 3] * x1[i + 3];
@@ -76,8 +95,8 @@ double Metric(ANNpoint x1, ANNpoint x2, int dim, int *topology,
                                x2[i + 2] * x2[i + 2] + x2[i + 3] * x2[i + 3];
                 fd = fd / (sqrt(norm1 * norm2));
             }
-            dtheta = ANN_MIN(acos(fd), acos(-fd));
-            rho += ANN_POW(scale[i] * dtheta);
+            dtheta = ANN_MIN(acos(fd), acos(-fd)); // Quaterion angle in radians
+            rho += ANN_POW(scale[i] * dtheta); // squared scaled angle
             i = i + 3;
         }
     }
@@ -86,7 +105,12 @@ double Metric(ANNpoint x1, ANNpoint x2, int dim, int *topology,
     return sqrt(rho);
 }
 
-ANNbool readPt(istream &in, int *p, int dim)  // read point (false on EOF)
+// read a point from a file stream 
+// in: input file stream
+// p: the point
+// dim: the dimension of the product space
+// returns false on EOF
+ANNbool readPt(istream &in, int *p, int dim)  
 {
     for (int i = 0; i < dim; i++) {
         if (!(in >> p[i])) return ANNfalse;
@@ -94,6 +118,11 @@ ANNbool readPt(istream &in, int *p, int dim)  // read point (false on EOF)
     return ANNtrue;
 }
 
+// read a point from a file stream 
+// in: input file stream
+// p: the point
+// dim: the dimension of the product space
+// returns false on EOF
 void printPt(ostream &out, ANNpoint p, int dim)  // print point
 {
     out << "(" << p[0];
